@@ -21,7 +21,7 @@ This project is part of a continuous assessment to practice collaborative workfl
 ---
 
 ## Architecture Diagram
-![Architecture Diagram](docs/architecture.png)
+https://github.com/Nazira-umucyo/momo-etl-dashboard/blob/main/image/momo_sms%20photo.png
 
 ---
 
