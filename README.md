@@ -21,7 +21,7 @@ This project is part of a continuous assessment to practice collaborative workfl
 
 ---
 
-## Architecture Diagram
+## Entity Relationship Diagram
 https://github.com/Nazira-umucyo/momo-etl-dashboard/blob/main/image/momo_sms%20photo.png
 
 ---
