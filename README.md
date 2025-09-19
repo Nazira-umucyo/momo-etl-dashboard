@@ -16,7 +16,8 @@ This project is part of a continuous assessment to practice collaborative workfl
 - Allan Tumusime  
 - Nazira Umucyo  
 - Linda Queen Sheja  
-- Davy Mugire  
+- Davy Mugire
+- UWENAYO Alain Pacifique
 
 ---
 
