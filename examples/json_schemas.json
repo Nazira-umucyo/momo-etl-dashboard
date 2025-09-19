@@ -1,0 +1,62 @@
+{
+	  "user_example": {
+		      "user_id": 1,
+		          "full_name": "Alice Umutoni",
+			      "phone_number": "+250788123456",
+			          "created_at": "2025-09-01T10:30:00Z"
+				    },
+				      "category_example": {
+					          "category_id": 1,
+						      "name": "Airtime Purchase",
+						          "description": "Buying prepaid mobile airtime"
+							    },
+							      "transaction_simple": {
+								          "transaction_id": 101,
+									      "amount": 5000.00,
+									          "currency": "RWF",
+										      "transaction_date": "2025-09-15T12:00:00Z",
+										          "category_id": 1,
+											      "payer_id": 1,
+											          "payee_id": 2,
+												      "sms_reference": "TXN123456ABC"
+												        },
+													  "transaction_full": {
+														      "transaction": {
+															            "transaction_id": 102,
+																          "amount": 2000.00,
+																	        "currency": "RWF",
+																		      "transaction_date": "2025-09-16T15:45:00Z",
+																		            "sms_reference": "TXN789XYZ"
+																			        },
+																				    "payer": {
+																					          "user_id": 1,
+																						        "full_name": "Alice Umutoni",
+																							      "phone_number": "+250788123456"
+																							          },
+																								      "payee": {
+																									            "user_id": 2,
+																										          "full_name": "MTN Rwanda",
+																											        "phone_number": "MTN_SERVICE"
+																												    },
+																												        "category": {
+																														      "category_id": 2,
+																														            "name": "Bill Payment",
+																															          "description": "Paying electricity bill"
+																																      },
+																																          "logs": [
+																																		        {
+																																				        "log_id": 1,
+																																					        "ts": "2025-09-16T15:46:00Z",
+																																						        "level": "INFO",
+																																							        "message": "Transaction parsed successfully"
+																																								      },
+																																								            {
+																																										            "log_id": 2,
+																																											            "ts": "2025-09-16T15:47:00Z",
+																																												            "level": "SUCCESS",
+																																													            "message": "Transaction stored in database"
+																																														          }
+																																															      ]
+																																															        }
+}
+
