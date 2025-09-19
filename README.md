@@ -25,6 +25,8 @@ This project is part of a continuous assessment to practice collaborative workfl
 https://github.com/Nazira-umucyo/momo-etl-dashboard/blob/main/image/momo_sms%20photo.png
 
 ---
+## architecture diagram
+https://github.com/Nazira-umucyo/momo-etl-dashboard/blob/main/docs/architecture%20diagram.jpg
 
 ## Scrum Board
 We are using GitHub Projects to manage our workflow.  
