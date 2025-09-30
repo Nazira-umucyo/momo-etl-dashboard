@@ -6,136 +6,136 @@ Parse a MoMo SMS XML file (modified_sms_v2.xml) into JSON objects (list of dicts
 Auto-detects common element names; adapt parse_sms_element() if your XML uses different tags.
 
 Usage:
-      python dsa/parse_xml.py               # uses data/raw/modified_sms_v2.xml -> data/processed/transactions.json
-        python dsa/parse_xml.py --in path/to/file.xml --out path/to/out.json
-        """
+  python dsa/parse_xml.py               # uses data/raw/modified_sms_v2.xml -> data/processed/transactions.json
+  python dsa/parse_xml.py --in path/to/file.xml --out path/to/out.json
+"""
 
-        import json
-        import xml.etree.ElementTree as ET
-        from pathlib import Path
-        from datetime import datetime
-        import argparse
-        import re
+import json
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from datetime import datetime
+import argparse
+import re
 
-        DEFAULT_IN = Path("data/raw/modified_sms_v2.xml")
-        DEFAULT_OUT = Path("data/processed/transactions.json")
+DEFAULT_IN = Path("data/raw/modified_sms_v2.xml")
+DEFAULT_OUT = Path("data/processed/transactions.json")
 
-        AMOUNT_RE = re.compile(r"([0-9\.,]+)")
+AMOUNT_RE = re.compile(r"([0-9\.,]+)")
 
-        def try_parse_amount(text):
-                if not text:
-                            return None
-                                # try to find first numeric group
-                                    m = AMOUNT_RE.search(str(text))
-                                        if not m:
-                                                    return None
-                                                        s = m.group(1)
-                                                            s = s.replace(",", "")
-                                                                try:
-                                                                            return float(s)
-                                                                            except Exception:
-                                                                                        return None
+def try_parse_amount(text):
+    if not text:
+        return None
+    # try to find first numeric group
+    m = AMOUNT_RE.search(str(text))
+    if not m:
+        return None
+    s = m.group(1)
+    s = s.replace(",", "")
+    try:
+        return float(s)
+    except Exception:
+        return None
 
-                                                                                    def try_parse_timestamp(text):
-                                                                                            if not text:
-                                                                                                        return None
-                                                                                                            text = text.strip()
-                                                                                                                # try ISO-like parse
-                                                                                                                    fmts = [
-                                                                                                                            "%Y-%m-%dT%H:%M:%SZ",
-                                                                                                                                    "%Y-%m-%d %H:%M:%S",
-                                                                                                                                            "%d/%m/%Y %H:%M:%S",
-                                                                                                                                                    "%d/%m/%Y %H:%M",
-                                                                                                                                                            "%Y-%m-%d",
-                                                                                                                                                                ]
-                                                                                                                        for f in fmts:
-                                                                                                                                    try:
-                                                                                                                                                dt = datetime.strptime(text, f)
-                                                                                                                                                            return dt.isoformat() + "Z"
-                                                                                                                                                                except Exception:
-                                                                                                                                                                                continue
-                                                                                                                                                                                    # fallback - return raw
-                                                                                                                                                                                        return text
+def try_parse_timestamp(text):
+    if not text:
+        return None
+    text = text.strip()
+    # try ISO-like parse
+    fmts = [
+        "%Y-%m-%dT%H:%M:%SZ",
+        "%Y-%m-%d %H:%M:%S",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y %H:%M",
+        "%Y-%m-%d",
+    ]
+    for f in fmts:
+        try:
+            dt = datetime.strptime(text, f)
+            return dt.isoformat() + "Z"
+        except Exception:
+            continue
+    # fallback - return raw
+    return text
 
-                                                                                                                                                                                    def parse_sms_element(elem):
-                                                                                                                                                                                            """
-                                                                                                                                                                                                Generic extractor. Tries multiple tag names commonly used in MoMo SMS dumps.
-                                                                                                                                                                                                    Returned fields: id (string), sms_reference, transaction_type, amount (float), currency,
-                                                                                                                                                                                                                         sender, receiver, timestamp (ISO or raw), raw_text
-                                                                                                                                                                                                                             """
-                                                                                                                                                                                                                                 def t(tag):
-                                                                                                                                                                                                                                             # try child tags, attributes, fallback to None
-                                                                                                                                                                                                                                                     v = elem.findtext(tag)
-                                                                                                                                                                                                                                                             if v is None:
-                                                                                                                                                                                                                                                                             v = elem.get(tag)
-                                                                                                                                                                                                                                                                                     return v
+def parse_sms_element(elem):
+    """
+    Generic extractor. Tries multiple tag names commonly used in MoMo SMS dumps.
+    Returned fields: id (string), sms_reference, transaction_type, amount (float), currency,
+                     sender, receiver, timestamp (ISO or raw), raw_text
+    """
+    def t(tag):
+        # try child tags, attributes, fallback to None
+        v = elem.findtext(tag)
+        if v is None:
+            v = elem.get(tag)
+        return v
 
-                                                                                                                                                                                                                                                                                     # common candidates, adapt if your XML uses different names
-                                                                                                                                                                                                                                                                                         sms_id = t("id") or t("sms_id") or t("message_id") or elem.get("id")
-                                                                                                                                                                                                                                                                                             sms_ref = t("reference") or t("sms_reference") or sms_id
-                                                                                                                                                                                                                                                                                                 transaction_type = t("type") or t("transaction_type") or t("tx_type")
-                                                                                                                                                                                                                                                                                                     amount_raw = t("amount") or t("amt") or t("value")
-                                                                                                                                                                                                                             currency = t("currency") or "RWF"
-                                                                                                                                                                                                                                 sender = t("sender") or t("from") or t("msisdn")
-                                                                                                                                                                                                                                     receiver = t("receiver") or t("to") or t("recipient")
-                                                                                                                                                                                                                                         timestamp = t("timestamp") or t("date") or t("time")
-                                                                                                                                                                                                                                             raw_text = t("body") or t("message") or (elem.text or "").strip()
+    # common candidates, adapt if your XML uses different names
+    sms_id = t("id") or t("sms_id") or t("message_id") or elem.get("id")
+    sms_ref = t("reference") or t("sms_reference") or sms_id
+    transaction_type = t("type") or t("transaction_type") or t("tx_type")
+    amount_raw = t("amount") or t("amt") or t("value")
+    currency = t("currency") or "RWF"
+    sender = t("sender") or t("from") or t("msisdn")
+    receiver = t("receiver") or t("to") or t("recipient")
+    timestamp = t("timestamp") or t("date") or t("time")
+    raw_text = t("body") or t("message") or (elem.text or "").strip()
 
-                                                                                                                                                                                                                                                 amount = try_parse_amount(amount_raw if amount_raw else raw_text)
-                                                                                                                                                                                                                                                     ts = try_parse_timestamp(timestamp)
+    amount = try_parse_amount(amount_raw if amount_raw else raw_text)
+    ts = try_parse_timestamp(timestamp)
 
-                                                                                                                                                                                                                                                         return {
-                                                                                                                                                                                                                                                                 "id": str(sms_id) if sms_id is not None else None,
-                                                                                                                                                                                                                                                                         "sms_reference": str(sms_ref) if sms_ref is not None else None,
-                                                                                                                                                                                                                                                                                 "transaction_type": transaction_type,
-                                                                                                                                                                                                                                                                                         "amount": amount,
-                                                                                                                                                                                                                                                                                                 "currency": currency,
-                                                                                                                                                                                                                                                                                                         "sender": sender,
-                                                                                                                                                                                                                                                                                                                 "receiver": receiver,
-                                                                                                                                                                                                                                                                                                                         "timestamp": ts,
-                                                                                                                                                                                                                                                                                                                                 "raw_text": raw_text
-                                                                                                                                                                                                                                                                                                                                     }
+    return {
+        "id": str(sms_id) if sms_id is not None else None,
+        "sms_reference": str(sms_ref) if sms_ref is not None else None,
+        "transaction_type": transaction_type,
+        "amount": amount,
+        "currency": currency,
+        "sender": sender,
+        "receiver": receiver,
+        "timestamp": ts,
+        "raw_text": raw_text
+    }
 
-                                                                                                                                                                                                                                                         def find_record_elements(root):
-                                                                                                                                                                                                                                                                 # try common element names
-                                                                                                                                                                                                                                                                     for tag in ("sms", "message", "record", "row", "entry"):
-                                                                                                                                                                                                                                                                                 found = root.findall(".//" + tag)
-                                                                                                                                                                                                                                                                                         if found:
-                                                                                                                                                                                                                                                                                                         return found
-                                                                                                                                                                                                                                                                                                             # fallback: use immediate children
-                                                                                                                                                                                                                                                                                                                 return list(root)
+def find_record_elements(root):
+    # try common element names
+    for tag in ("sms", "message", "record", "row", "entry"):
+        found = root.findall(".//" + tag)
+        if found:
+            return found
+    # fallback: use immediate children
+    return list(root)
 
-                                                                                                                                                                                                                                                                                                             def parse_xml_to_json(input_path: Path, output_path: Path):
-                                                                                                                                                                                                                                                                                                                     if not input_path.exists():
-                                                                                                                                                                                                                                                                                                                                 raise FileNotFoundError(f"Input XML not found: {input_path}")
+def parse_xml_to_json(input_path: Path, output_path: Path):
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input XML not found: {input_path}")
 
-                                                                                                                                                                                                                                                                                                                                 tree = ET.parse(str(input_path))
-                                                                                                                                                                                                                                                                                                                                     root = tree.getroot()
+    tree = ET.parse(str(input_path))
+    root = tree.getroot()
 
-                                                                                                                                                                                                                                                                                                                                         elems = find_record_elements(root)
-                                                                                                                                                                                                                                                                                                                                             transactions = []
-                                                                                                                                                                                                                                                                                                                                                 for e in elems:
-                                                                                                                                                                                                                                                                                                                                                             try:
-                                                                                                                                                                                                                                                                                                                                                                         tx = parse_sms_element(e)
-                                                                                                                                                                                                                                                                                                                                                                                     transactions.append(tx)
-                                                                                                                                                                                                                                                                                                                                                                                             except Exception as exc:
-                                                                                                                                                                                                                                                                                                                                                                                                             print("Warning: failed parsing element:", exc)
+    elems = find_record_elements(root)
+    transactions = []
+    for e in elems:
+        try:
+            tx = parse_sms_element(e)
+            transactions.append(tx)
+        except Exception as exc:
+            print("Warning: failed parsing element:", exc)
 
-                                                                                                                                                                                                                                                                                                                                                                                                                 output_path.parent.mkdir(parents=True, exist_ok=True)
-                                                                                                                                                                                                                                                                                                                                                                                                                     with open(output_path, "w", encoding="utf-8") as f:
-                                                                                                                                                                                                                                                                                                                                                                                                                                 json.dump(transactions, f, indent=2, ensure_ascii=False)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(transactions, f, indent=2, ensure_ascii=False)
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                     print(f"Parsed {len(transactions)} records -> {output_path}")
-                                                                                                                                                                                                                                                                                                                                                                                                                                         return transactions
+    print(f"Parsed {len(transactions)} records -> {output_path}")
+    return transactions
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                     def main():
-                                                                                                                                                                                                                                                                                                                                                                                                                                             p = argparse.ArgumentParser()
-                                                                                                                                                                                                                                                                                                                                                                                                                                                 p.add_argument("--in", dest="infile", default=str(DEFAULT_IN))
-                                                                                                                                                                                                                                                                                                                                                                                                                                                     p.add_argument("--out", dest="outfile", default=str(DEFAULT_OUT))
-                                                                                                                                                                                                                                                                                                                                                                                                                                                         args = p.parse_args()
-                                                                                                                                                                                                                                                                                                                                                                                                                                                             inp = Path(args.infile)
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                 out = Path(args.outfile)
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                     parse_xml_to_json(inp, out)
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--in", dest="infile", default=str(DEFAULT_IN))
+    p.add_argument("--out", dest="outfile", default=str(DEFAULT_OUT))
+    args = p.parse_args()
+    inp = Path(args.infile)
+    out = Path(args.outfile)
+    parse_xml_to_json(inp, out)
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                     if __name__ == "__main__":
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                         main()
+if __name__ == "__main__":
+    main()
