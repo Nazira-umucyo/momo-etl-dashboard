@@ -1,0 +1,17 @@
+<transactions>
+	    <transaction id="1">
+		            <type>Deposit</type>
+			            <amount>1000</amount>
+				            <sender>John</sender>
+					            <receiver>Alice</receiver>
+						            <timestamp>2025-09-28T10:00:00</timestamp>
+							        </transaction>
+								    <transaction id="2">
+									            <type>Withdrawal</type>
+										            <amount>500</amount>
+											            <sender>Alice</sender>
+												            <receiver>ATM</receiver>
+													            <timestamp>2025-09-28T11:00:00</timestamp>
+														        </transaction>
+														</transactions>
+
