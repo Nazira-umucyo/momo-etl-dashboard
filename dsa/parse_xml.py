@@ -1,141 +1,95 @@
-#!/usr/bin/env python3
-"""
-dsa/parse_xml.py
-
-Parse a MoMo SMS XML file (modified_sms_v2.xml) into JSON objects (list of dicts).
-Auto-detects common element names; adapt parse_sms_element() if your XML uses different tags.
-
-Usage:
-  python dsa/parse_xml.py               # uses data/raw/modified_sms_v2.xml -> data/processed/transactions.json
-  python dsa/parse_xml.py --in path/to/file.xml --out path/to/out.json
-"""
-
-import json
-import xml.etree.ElementTree as ET
-from pathlib import Path
-from datetime import datetime
-import argparse
 import re
+import xml.etree.ElementTree as ET
+from datetime import datetime
 
-DEFAULT_IN = Path("data/raw/modified_sms_v2.xml")
-DEFAULT_OUT = Path("data/processed/transactions.json")
+class TransactionStore:
+    def __init__(self, xml_path):
+        self.xml_path = xml_path
+        self.transactions_list = []
+        self.transactions_dict = {}
+        self._load_xml()
 
-AMOUNT_RE = re.compile(r"([0-9\.,]+)")
+    def parse_body(self, body: str):
+        tx = {
+            "txid": None,
+            "category": None,
+            "amount": None,
+            "counterparty_name": None,
+            "counterparty_phone": None,
+            "fee": None,
+            "new_balance": None
+        }
+        if not body:
+            return tx
+        m = re.search(r"TxId[:\s]+(\d+)", body)
+        if m: tx["txid"] = m.group(1)
+        body_lower = body.lower()
+        if "deposit" in body_lower:
+            tx["category"] = "Deposit"
+        elif "withdraw" in body_lower:
+            tx["category"] = "Withdrawal"
+        elif "received" in body_lower:
+            tx["category"] = "Incoming"
+        elif "transferred" in body_lower:
+            tx["category"] = "Transfer"
+        elif "payment" in body_lower:
+            tx["category"] = "Payment"
+        elif "airtime" in body_lower or "token" in body_lower:
+            tx["category"] = "ServicePayment"
+        m = re.search(r"(\d{3,9})\s*RWF", body)
+        if m: tx["amount"] = int(m.group(1))
+        m = re.search(r"new balance[:\s]*([\d,]+)\s*RWF", body, re.I)
+        if m: tx["new_balance"] = int(m.group(1).replace(",", ""))
+        m = re.search(r"Fee (?:was|paid)[:\s]*([\d,]+)\s*RWF", body, re.I)
+        if m: tx["fee"] = int(m.group(1).replace(",", ""))
+        return tx
 
-def try_parse_amount(text):
-    if not text:
-        return None
-    # try to find first numeric group
-    m = AMOUNT_RE.search(str(text))
-    if not m:
-        return None
-    s = m.group(1)
-    s = s.replace(",", "")
-    try:
-        return float(s)
-    except Exception:
-        return None
+    def _load_xml(self):
+        tree = ET.parse(self.xml_path)
+        root = tree.getroot()
+        for idx, sms in enumerate(root.findall("sms"), start=1):
+            rec = sms.attrib.copy()
+            body = rec.get("body", "")
+            tx = self.parse_body(body)
+            try:
+                ts = int(rec.get("date", "0")) // 1000
+                date = datetime.utcfromtimestamp(ts).isoformat() + "Z"
+            except:
+                date = rec.get("readable_date")
+            record = {
+                "id": idx,
+                "txid": tx["txid"],
+                "category": tx["category"],
+                "amount": tx["amount"],
+                "counterparty_name": tx["counterparty_name"],
+                "counterparty_phone": tx["counterparty_phone"],
+                "fee": tx["fee"],
+                "new_balance": tx["new_balance"],
+                "date": date,
+                "body": body
+            }
+            self.transactions_list.append(record)
+            self.transactions_dict[idx] = record
 
-def try_parse_timestamp(text):
-    if not text:
-        return None
-    text = text.strip()
-    # try ISO-like parse
-    fmts = [
-        "%Y-%m-%dT%H:%M:%SZ",
-        "%Y-%m-%d %H:%M:%S",
-        "%d/%m/%Y %H:%M:%S",
-        "%d/%m/%Y %H:%M",
-        "%Y-%m-%d",
-    ]
-    for f in fmts:
-        try:
-            dt = datetime.strptime(text, f)
-            return dt.isoformat() + "Z"
-        except Exception:
-            continue
-    # fallback - return raw
-    return text
+    def add_transaction(self, body_text):
+        new_id = max(self.transactions_dict.keys(), default=0) + 1
+        tx = {"id": new_id, "body": body_text, "date": datetime.utcnow().isoformat() + "Z"}
+        tx.update(self.parse_body(body_text))
+        self.transactions_list.append(tx)
+        self.transactions_dict[new_id] = tx
+        return tx
 
-def parse_sms_element(elem):
-    """
-    Generic extractor. Tries multiple tag names commonly used in MoMo SMS dumps.
-    Returned fields: id (string), sms_reference, transaction_type, amount (float), currency,
-                     sender, receiver, timestamp (ISO or raw), raw_text
-    """
-    def t(tag):
-        # try child tags, attributes, fallback to None
-        v = elem.findtext(tag)
-        if v is None:
-            v = elem.get(tag)
-        return v
+    def update_transaction(self, tid, body_text):
+        tx = self.transactions_dict.get(tid)
+        if not tx:
+            return None
+        tx["body"] = body_text
+        tx.update(self.parse_body(body_text))
+        return tx
 
-    # common candidates, adapt if your XML uses different names
-    sms_id = t("id") or t("sms_id") or t("message_id") or elem.get("id")
-    sms_ref = t("reference") or t("sms_reference") or sms_id
-    transaction_type = t("type") or t("transaction_type") or t("tx_type")
-    amount_raw = t("amount") or t("amt") or t("value")
-    currency = t("currency") or "RWF"
-    sender = t("sender") or t("from") or t("msisdn")
-    receiver = t("receiver") or t("to") or t("recipient")
-    timestamp = t("timestamp") or t("date") or t("time")
-    raw_text = t("body") or t("message") or (elem.text or "").strip()
-
-    amount = try_parse_amount(amount_raw if amount_raw else raw_text)
-    ts = try_parse_timestamp(timestamp)
-
-    return {
-        "id": str(sms_id) if sms_id is not None else None,
-        "sms_reference": str(sms_ref) if sms_ref is not None else None,
-        "transaction_type": transaction_type,
-        "amount": amount,
-        "currency": currency,
-        "sender": sender,
-        "receiver": receiver,
-        "timestamp": ts,
-        "raw_text": raw_text
-    }
-
-def find_record_elements(root):
-    # try common element names
-    for tag in ("sms", "message", "record", "row", "entry"):
-        found = root.findall(".//" + tag)
-        if found:
-            return found
-    # fallback: use immediate children
-    return list(root)
-
-def parse_xml_to_json(input_path: Path, output_path: Path):
-    if not input_path.exists():
-        raise FileNotFoundError(f"Input XML not found: {input_path}")
-
-    tree = ET.parse(str(input_path))
-    root = tree.getroot()
-
-    elems = find_record_elements(root)
-    transactions = []
-    for e in elems:
-        try:
-            tx = parse_sms_element(e)
-            transactions.append(tx)
-        except Exception as exc:
-            print("Warning: failed parsing element:", exc)
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(transactions, f, indent=2, ensure_ascii=False)
-
-    print(f"Parsed {len(transactions)} records -> {output_path}")
-    return transactions
-
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--in", dest="infile", default=str(DEFAULT_IN))
-    p.add_argument("--out", dest="outfile", default=str(DEFAULT_OUT))
-    args = p.parse_args()
-    inp = Path(args.infile)
-    out = Path(args.outfile)
-    parse_xml_to_json(inp, out)
-
-if __name__ == "__main__":
-    main()
+    def delete_transaction(self, tid):
+        if tid not in self.transactions_dict:
+            return False
+        self.transactions_dict.pop(tid)
+        self.transactions_list = [t for t in self.transactions_list if t["id"] != tid]
+        return True
