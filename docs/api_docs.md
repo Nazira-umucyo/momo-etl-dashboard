@@ -1,26 +1,40 @@
-MoMo API Documentation
+# MoMo API Documentation
 
-Base URL: http://localhost:8000
+**Base URL:**  
 
-Authentication:
+http://localhost:8000
 
-All endpoints require Basic Authentication.
+ 
+- All endpoints require **Basic Authentication**.  
+- Header:  
 
-Header: Authorization: Basic <base64(username:password)>
+Authorization: Basic <base64(username:password)>
 
-Default credentials: user: admin
+- Default credentials:  
+
+user: admin
 pass: secret
 
-Unauthorized requests return: {"error": "Unauthorized"}
-HTTP Status Code: 401
+- Unauthorized requests return:  
 
+```json
+{"error": "Unauthorized"}
+
+HTTP Status Code: 401
+Endpoints
 1. Get All Transactions
 
-Endpoint: GET /transactions
+    Method: GET
 
-Request Example (cURL): curl -u admin:secret http://localhost:8000/transactions
+    URL: /transactions
 
-Response Example (200 OK): {
+Request Example:
+
+curl -u admin:secret http://localhost:8000/transactions
+
+Response Example (200 OK):
+
+{
   "transactions": [
     {
       "id": 1,
@@ -36,19 +50,26 @@ Response Example (200 OK): {
     }
   ]
 }
+
 Error Codes:
 
-401 Unauthorized → Invalid credentials
+    401 Unauthorized → Invalid credentials
 
-404 Not Found → Invalid path
+    404 Not Found → Invalid path
 
 2. Get Single Transaction
 
-Endpoint: GET /transactions/<id>
+    Method: GET
 
-Request Example (cURL): curl -u admin:secret http://localhost:8000/transactions/1
+    URL: /transactions/<id>
 
-Response Example (200 OK): {
+Request Example:
+
+curl -u admin:secret http://localhost:8000/transactions/1
+
+Response Example (200 OK):
+
+{
   "id": 1,
   "txid": "12345",
   "category": "Deposit",
@@ -60,26 +81,35 @@ Response Example (200 OK): {
   "date": "2025-10-02T10:00:00Z",
   "body": "TxId:12345 Deposit 5000 RWF new balance 10000 RWF"
 }
+
 Error Codes:
 
-400 Invalid ID → Non-integer ID
+    400 Invalid ID → Non-integer ID
 
-404 Not Found → Transaction not found
+    404 Not Found → Transaction not found
 
-401 Unauthorized → Invalid credentials
+    401 Unauthorized → Invalid credentials
 
 3. Create Transaction
 
-Endpoint: POST /transactions
+    Method: POST
 
-Request Headers: Content-Type: application/json
+    URL: /transactions
+
+    Headers:
+
+Content-Type: application/json
 Authorization: Basic <base64(username:password)>
 
-Request Example (cURL): curl -u admin:secret -X POST http://localhost:8000/transactions \
+Request Example:
+
+curl -u admin:secret -X POST http://localhost:8000/transactions \
 -H "Content-Type: application/json" \
 -d '{"body": "TxId:67890 Withdrawal 2000 RWF Fee 50 RWF new balance 8000 RWF"}'
 
-Response Example (201 Created): {
+Response Example (201 Created):
+
+{
   "id": 2,
   "txid": "67890",
   "category": "Withdrawal",
@@ -89,24 +119,33 @@ Response Example (201 Created): {
   "date": "2025-10-02T10:05:00Z",
   "body": "TxId:67890 Withdrawal 2000 RWF Fee 50 RWF new balance 8000 RWF"
 }
+
 Error Codes:
 
-401 Unauthorized → Invalid credentials
+    401 Unauthorized → Invalid credentials
 
-404 Not Found → Wrong path
+    404 Not Found → Wrong path
 
 4. Update Transaction
 
-Endpoint: PUT /transactions/<id>
+    Method: PUT
 
-Request Headers: Content-Type: application/json
+    URL: /transactions/<id>
+
+    Headers:
+
+Content-Type: application/json
 Authorization: Basic <base64(username:password)>
 
-Request Example (cURL): curl -u admin:secret -X PUT http://localhost:8000/transactions/2 \
+Request Example:
+
+curl -u admin:secret -X PUT http://localhost:8000/transactions/2 \
 -H "Content-Type: application/json" \
 -d '{"body": "TxId:67890 Withdrawal 2500 RWF Fee 50 RWF new balance 7500 RWF"}'
 
-Response Example (200 OK): {
+Response Example (200 OK):
+
+{
   "id": 2,
   "txid": "67890",
   "category": "Withdrawal",
@@ -116,37 +155,49 @@ Response Example (200 OK): {
   "date": "2025-10-02T10:05:00Z",
   "body": "TxId:67890 Withdrawal 2500 RWF Fee 50 RWF new balance 7500 RWF"
 }
+
 Error Codes:
 
-400 Invalid ID → Non-integer ID
+    400 Invalid ID → Non-integer ID
 
-404 Not Found → Transaction not found or wrong path
+    404 Not Found → Transaction not found
 
-401 Unauthorized → Invalid credentials
+    401 Unauthorized → Invalid credentials
 
 5. Delete Transaction
 
-Endpoint: DELETE /transactions/<id>
+    Method: DELETE
 
-Request Example (cURL): curl -u admin:secret -X DELETE http://localhost:8000/transactions/2
+    URL: /transactions/<id>
 
-Response Example (200 OK): {
+Request Example:
+
+curl -u admin:secret -X DELETE http://localhost:8000/transactions/2
+
+Response Example (200 OK):
+
+{
   "deleted": 2
 }
+
 Error Codes:
 
-400 Invalid ID → Non-integer ID
+    400 Invalid ID → Non-integer ID
 
-404 Not Found → Transaction not found or wrong path
+    404 Not Found → Transaction not found
 
-401 Unauthorized → Invalid credentials
+    401 Unauthorized → Invalid credentials
 
 Notes
 
-All endpoints require Basic Auth.
+    All endpoints require Basic Auth.
 
-id is auto-incremented when creating new transactions.
+    id is auto-incremented when creating new transactions.
 
-Transaction data is stored in memory; restarting the server reloads from the XML file.
+    Transaction data is stored in memory; restarting the server reloads from the XML file.
 
-For production, Basic Auth is not secure. Consider JWT or OAuth2.
+    Basic Auth is insecure for production. Consider using:
+
+        JWT (JSON Web Tokens)
+
+        OAuth2
